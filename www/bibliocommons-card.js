@@ -653,8 +653,8 @@ class BiblioCommonsCard extends HTMLElement {
 
   walletButtonsTemplate(group) {
     const cardNumber = this.libraryCardNumber(group);
-    const appleUrl = group.appleWalletUrl || this.walletEndpoint(group, "apple");
-    const googleUrl = group.googleWalletUrl || this.walletEndpoint(group, "google");
+    const appleUrl = group.appleWalletUrl || "";
+    const googleUrl = group.googleWalletUrl || "";
     return `
       <div class="wallet-actions">
         ${this.walletButtonTemplate("Apple Wallet", "mdi:apple", appleUrl, cardNumber)}
@@ -665,16 +665,13 @@ class BiblioCommonsCard extends HTMLElement {
 
   walletButtonTemplate(label, icon, url, cardNumber) {
     const disabled = !url || !cardNumber;
+    const disabledTitle = cardNumber
+      ? `${label} setup is not available yet`
+      : "Library card number not available yet";
     const attrs = disabled
-      ? `href="#" class="wallet-button disabled" aria-disabled="true"`
-      : `href="${this.escapeAttr(url)}" class="wallet-button" target="_blank" rel="noopener noreferrer"`;
+      ? `href="#" class="wallet-button disabled" aria-disabled="true" title="${this.escapeAttr(disabledTitle)}"`
+      : `href="${this.escapeAttr(url)}" class="wallet-button" target="_blank" rel="noopener noreferrer" title="Add to ${this.escapeAttr(label)}"`;
     return `<a ${attrs}><ha-icon icon="${this.escapeAttr(icon)}"></ha-icon><span>${this.escape(label)}</span></a>`;
-  }
-
-  walletEndpoint(group, wallet) {
-    if (!group?.entryId) return "";
-    const entryId = encodeURIComponent(group.entryId);
-    return `/api/bibliocommons/${entryId}/wallet/${encodeURIComponent(wallet)}`;
   }
 
   code39Svg(value) {

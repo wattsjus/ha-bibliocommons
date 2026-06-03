@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────
+#  BiblioCommons — Checked Out Books Card
+#  Add this to your Lovelace dashboard (Raw config editor)
+#  Requires: custom:auto-entities + custom:button-card  OR
+#  use the simpler markdown-only version below.
+# ─────────────────────────────────────────────────────────────
+
+# ── OPTION A: Clean Markdown Card (no extra plugins needed) ──
+type: markdown
+title: 📚 My Library Books
+content: >
+  {% set books = state_attr('sensor.library_checked_out_books', 'books') %}
+  {% set overdue = state_attr('sensor.library_checked_out_books', 'overdue_count') %}
+  {% set total = state_attr('sensor.library_checked_out_books', 'total_checked_out') %}
+
+  **{{ total }} book{{ 's' if total != 1 }}** checked out
+  {%- if overdue and overdue > 0 %} · ⚠️ **{{ overdue }} overdue**{% endif %}
+
+  ---
+
+  {% if books %}
+  {% for book in books %}
+  {% if book.overdue %}⚠️{% else %}📖{% endif %} **{{ book.title }}**
+  *{{ book.author }}*
+  {%- if book.description %}
+  {{ book.description }}
+  {%- endif %}
+  Due: `{{ book.due_date }}`{% if book.renewals %} · {{ book.renewals }}{% endif %}{% if book.status and book.status != 'Checked Out' %} · *{{ book.status }}*{% endif %}
+
+  {% endfor %}
+  {% else %}
+  *No books currently checked out.*
+  {% endif %}

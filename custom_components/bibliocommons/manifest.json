@@ -1,0 +1,10 @@
+{
+  "domain": "bibliocommons",
+  "name": "Biblio Commons",
+  "documentation": "https://github.com/wattsjus/ha-bibliocommons",
+  "config_flow": true,
+  "requirements": ["beautifulsoup4==4.12.3"],
+  "codeowners": [],
+  "version": "1.10.5",
+  "iot_class": "cloud_polling"
+}

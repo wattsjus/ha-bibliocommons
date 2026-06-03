@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Biblio Commons Login",
+        "description": "Enter your library account credentials. Your password is stored securely in Home Assistant's config entry storage.",
+        "data": {
+          "library_url": "Library URL",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password. Please try again.",
+      "cannot_connect": "Could not connect to the library website. Check the URL and try again."
+    },
+    "abort": {
+      "already_configured": "Biblio Commons is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Library Alerts",
+        "description": "Choose the Home Assistant people who should always receive daily due-soon and overdue reminder summaries.",
+        "data": {
+          "always_alert_these_people_for_due_books": "Always alert these people for due books.",
+          "daily_reminders": "Send daily reminders",
+          "reminder_time": "Reminder time",
+          "due_soon_days": "Due soon window in days"
+        }
+      },
+      "assignments": {
+        "title": "Assign Checked-Out Books",
+        "description": "Choose which person each currently checked-out book belongs to."
+      }
+    }
+  }
+}

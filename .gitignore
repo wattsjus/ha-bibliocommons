@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.storage/
+secrets.yaml
+known_devices.yaml
+home-assistant.log*

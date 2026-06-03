@@ -1,0 +1,138 @@
+assign_book:
+  name: Assign book
+  description: Assign a checked-out library book to one or more people.
+  fields:
+    book_key:
+      required: true
+      name: Book key
+      description: The book_key attribute for the checked-out book.
+      example: "Beauty and the Beast - Rudnick, Elizabeth"
+      selector:
+        text:
+    assignee:
+      required: false
+      name: People
+      description: Person entity id or list of person entity ids to assign. Leave empty to unassign.
+      example: ["person.hannah_ruth", "person.joshua_watts"]
+      selector:
+        object:
+    entry_id:
+      required: false
+      name: Config entry ID
+      description: Optional BiblioCommons config entry id. Leave empty to update all BiblioCommons entries.
+      selector:
+        text:
+
+send_due_reminders:
+  name: Send due reminders
+  description: Send due-soon and overdue reminders now for assigned checked-out books.
+  fields:
+    entry_id:
+      required: false
+      name: Config entry ID
+      description: Optional BiblioCommons config entry id. Leave empty to send reminders for all BiblioCommons entries.
+      selector:
+        text:
+
+sync_books:
+  name: Sync books
+  description: Refresh checked-out library books now.
+  fields:
+    entry_id:
+      required: false
+      name: Config entry ID
+      description: Optional BiblioCommons config entry id. Leave empty to sync all BiblioCommons entries.
+      selector:
+        text:
+
+submit_book_report:
+  name: Submit book report
+  description: Save or update one person's report for a library book.
+  fields:
+    book_key:
+      required: true
+      name: Book key
+      selector:
+        text:
+    person_entity_id:
+      required: true
+      name: Person
+      selector:
+        text:
+    main_conflict:
+      required: true
+      name: Main conflict
+      selector:
+        text:
+          multiline: true
+    character_change:
+      required: true
+      name: Character change
+      selector:
+        text:
+          multiline: true
+    theme:
+      required: true
+      name: Theme
+      selector:
+        text:
+          multiline: true
+    recommendation:
+      required: true
+      name: Recommendation
+      selector:
+        text:
+          multiline: true
+    minutes_reading:
+      required: true
+      name: Minutes reading
+      selector:
+        number:
+          min: 0
+          mode: box
+    entry_id:
+      required: false
+      name: Config entry ID
+      selector:
+        text:
+
+review_book_report:
+  name: Review book report
+  description: Approve a book report or return it for changes.
+  fields:
+    book_key:
+      required: true
+      name: Book key
+      selector:
+        text:
+    person_entity_id:
+      required: true
+      name: Person
+      selector:
+        text:
+    report_status:
+      required: true
+      name: Review decision
+      selector:
+        select:
+          options:
+            - approved
+            - redo
+    screen_time_minutes:
+      required: false
+      name: Screen time minutes
+      selector:
+        number:
+          min: 0
+          mode: box
+    review_note:
+      required: false
+      name: Review note
+      selector:
+        text:
+          multiline: true
+    entry_id:
+      required: false
+      name: Config entry ID
+      selector:
+        text:

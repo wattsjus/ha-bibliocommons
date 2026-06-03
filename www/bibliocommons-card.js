@@ -86,6 +86,40 @@ class BiblioCommonsCard extends HTMLElement {
           background: #fff;
           border-radius: 4px;
         }
+        .wallet-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 2px;
+          max-width: 460px;
+        }
+        .wallet-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-height: 36px;
+          padding: 6px 10px;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 13px;
+          font-weight: 650;
+          line-height: 1.2;
+          text-align: center;
+          text-decoration: none;
+        }
+        .wallet-button ha-icon {
+          width: 18px;
+          height: 18px;
+          flex: 0 0 auto;
+        }
+        .wallet-button.disabled {
+          cursor: not-allowed;
+          opacity: 0.52;
+          pointer-events: none;
+        }
         .library:first-of-type {
           margin-top: 0;
         }
@@ -570,6 +604,8 @@ class BiblioCommonsCard extends HTMLElement {
         url: attrs.library_url || "",
         favicon: attrs.library_favicon || "",
         cardNumber: attrs.library_card_number || "",
+        appleWalletUrl: attrs.apple_wallet_url || attrs.apple_wallet_pass_url || "",
+        googleWalletUrl: attrs.google_wallet_url || attrs.google_wallet_pass_url || "",
         assignees: attrs.assignees || [],
         books,
         history,
@@ -613,6 +649,32 @@ class BiblioCommonsCard extends HTMLElement {
         }
       </section>
     `;
+  }
+
+  walletButtonsTemplate(group) {
+    const cardNumber = this.libraryCardNumber(group);
+    const appleUrl = group.appleWalletUrl || this.walletEndpoint(group, "apple");
+    const googleUrl = group.googleWalletUrl || this.walletEndpoint(group, "google");
+    return `
+      <div class="wallet-actions">
+        ${this.walletButtonTemplate("Apple Wallet", "mdi:apple", appleUrl, cardNumber)}
+        ${this.walletButtonTemplate("Google Wallet", "mdi:google", googleUrl, cardNumber)}
+      </div>
+    `;
+  }
+
+  walletButtonTemplate(label, icon, url, cardNumber) {
+    const disabled = !url || !cardNumber;
+    const attrs = disabled
+      ? `href="#" class="wallet-button disabled" aria-disabled="true"`
+      : `href="${this.escapeAttr(url)}" class="wallet-button" target="_blank" rel="noopener noreferrer"`;
+    return `<a ${attrs}><ha-icon icon="${this.escapeAttr(icon)}"></ha-icon><span>${this.escape(label)}</span></a>`;
+  }
+
+  walletEndpoint(group, wallet) {
+    if (!group?.entryId) return "";
+    const entryId = encodeURIComponent(group.entryId);
+    return `/api/bibliocommons/${entryId}/wallet/${encodeURIComponent(wallet)}`;
   }
 
   code39Svg(value) {
@@ -697,6 +759,7 @@ class BiblioCommonsCard extends HTMLElement {
       <section class="library">
         <div class="library-header">${icon}<span class="library-name">${name}</span>${dueBadge}${syncButton}</div>
         ${this.libraryBarcodeTemplate(this.libraryCardNumber(group))}
+        ${this.walletButtonsTemplate(group)}
         <div class="library-section-actions">
           <button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="books">
             ${showBooks ? "Hide checked out books" : "Show checked out books"} (${group.books.length})

@@ -115,10 +115,8 @@ class BiblioCommonsCard extends HTMLElement {
           height: 18px;
           flex: 0 0 auto;
         }
-        .wallet-button.disabled {
-          cursor: not-allowed;
-          opacity: 0.52;
-          pointer-events: none;
+        .wallet-button.unavailable {
+          opacity: 0.72;
         }
         .library:first-of-type {
           margin-top: 0;
@@ -514,6 +512,13 @@ class BiblioCommonsCard extends HTMLElement {
       });
     });
 
+    this.querySelectorAll(".wallet-button[data-wallet-unavailable]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.showNotification(event.currentTarget.dataset.walletUnavailable || "Wallet pass");
+      });
+    });
+
     this.querySelectorAll(".sync-button[data-entry-id]").forEach((button) => {
       button.addEventListener("click", (event) => {
         const entryId = event.currentTarget.dataset.entryId || "";
@@ -664,14 +669,22 @@ class BiblioCommonsCard extends HTMLElement {
   }
 
   walletButtonTemplate(label, icon, url, cardNumber) {
-    const disabled = !url || !cardNumber;
-    const disabledTitle = cardNumber
+    const unavailable = !url || !cardNumber;
+    const unavailableTitle = cardNumber
       ? `${label} setup is not available yet`
       : "Library card number not available yet";
-    const attrs = disabled
-      ? `href="#" class="wallet-button disabled" aria-disabled="true" title="${this.escapeAttr(disabledTitle)}"`
+    const attrs = unavailable
+      ? `href="#" class="wallet-button unavailable" data-wallet-unavailable="${this.escapeAttr(unavailableTitle)}" title="${this.escapeAttr(unavailableTitle)}"`
       : `href="${this.escapeAttr(url)}" class="wallet-button" target="_blank" rel="noopener noreferrer" title="Add to ${this.escapeAttr(label)}"`;
     return `<a ${attrs}><ha-icon icon="${this.escapeAttr(icon)}"></ha-icon><span>${this.escape(label)}</span></a>`;
+  }
+
+  showNotification(message) {
+    this.dispatchEvent(new CustomEvent("hass-notification", {
+      detail: { message },
+      bubbles: true,
+      composed: true,
+    }));
   }
 
   code39Svg(value) {

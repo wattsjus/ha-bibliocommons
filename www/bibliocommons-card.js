@@ -15,6 +15,7 @@ class BiblioCommonsCard extends HTMLElement {
     };
     this._expandedLibraryBooks = new Set();
     this._expandedLibraryHistory = new Set();
+    this._barcodeContext = null;
     this._syncing = false;
     this._reportContext = null;
     this._expandedReports = new Set();
@@ -51,6 +52,7 @@ class BiblioCommonsCard extends HTMLElement {
               : `<div class="empty">No library books to show.</div>`
           }
           ${this.reportDialogTemplate(groups)}
+          ${this.fullscreenBarcodeTemplate()}
         </div>
       </ha-card>
       <style>
@@ -86,21 +88,15 @@ class BiblioCommonsCard extends HTMLElement {
           background: #fff;
           border-radius: 4px;
         }
-        .wallet-actions {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px;
-          margin-top: 2px;
+        .barcode-actions {
           max-width: 460px;
         }
-        .wallet-actions.single {
-          grid-template-columns: minmax(0, 1fr);
-        }
-        .wallet-button {
+        .fullscreen-barcode-button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
+          width: 100%;
           min-height: 36px;
           padding: 6px 10px;
           border: 1px solid var(--divider-color);
@@ -112,14 +108,75 @@ class BiblioCommonsCard extends HTMLElement {
           line-height: 1.2;
           text-align: center;
           text-decoration: none;
+          cursor: pointer;
         }
-        .wallet-button ha-icon {
+        .fullscreen-barcode-button ha-icon {
           width: 18px;
           height: 18px;
           flex: 0 0 auto;
         }
-        .wallet-button.unavailable {
+        .fullscreen-barcode-button:disabled {
+          cursor: not-allowed;
           opacity: 0.72;
+        }
+        .barcode-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 10000;
+          display: grid;
+          place-items: center;
+          padding: 18px;
+          background: #fff;
+          color: #111;
+        }
+        .barcode-fullscreen {
+          width: min(100%, 760px);
+          display: grid;
+          gap: 16px;
+          justify-items: center;
+        }
+        .barcode-fullscreen-header {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 36px minmax(0, 1fr) 40px;
+          align-items: center;
+          gap: 10px;
+        }
+        .barcode-fullscreen-icon {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+          border-radius: 6px;
+        }
+        .barcode-fullscreen-title {
+          min-width: 0;
+          font-size: 20px;
+          font-weight: 750;
+          text-align: center;
+        }
+        .barcode-close {
+          width: 40px;
+          height: 40px;
+          border: 1px solid #ddd;
+          border-radius: 999px;
+          background: #fff;
+          color: #111;
+          cursor: pointer;
+          display: grid;
+          place-items: center;
+        }
+        .barcode-fullscreen .barcode-svg {
+          width: 100%;
+          max-width: none;
+          height: auto;
+          min-height: 170px;
+          border: 1px solid #ddd;
+        }
+        .barcode-fullscreen-number {
+          font-family: monospace;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: 0;
         }
         .library:first-of-type {
           margin-top: 0;
@@ -515,12 +572,34 @@ class BiblioCommonsCard extends HTMLElement {
       });
     });
 
-    this.querySelectorAll(".wallet-button[data-wallet-unavailable]").forEach((button) => {
+    this.querySelectorAll(".fullscreen-barcode-button[data-card-number]").forEach((button) => {
       button.addEventListener("click", (event) => {
-        event.preventDefault();
-        this.showNotification(event.currentTarget.dataset.walletUnavailable || "Wallet pass");
+        const target = event.currentTarget;
+        this.openFullscreenBarcode({
+          number: target.dataset.cardNumber || "",
+          name: target.dataset.libraryName || "Library card",
+          favicon: target.dataset.libraryFavicon || "",
+        });
       });
     });
+
+    const closeBarcode = this.querySelector(".barcode-close");
+    if (closeBarcode) {
+      closeBarcode.addEventListener("click", () => {
+        this._barcodeContext = null;
+        this.render();
+      });
+    }
+
+    const barcodeBackdrop = this.querySelector(".barcode-backdrop");
+    if (barcodeBackdrop) {
+      barcodeBackdrop.addEventListener("click", (event) => {
+        if (event.target === barcodeBackdrop) {
+          this._barcodeContext = null;
+          this.render();
+        }
+      });
+    }
 
     this.querySelectorAll(".sync-button[data-entry-id]").forEach((button) => {
       button.addEventListener("click", (event) => {
@@ -612,8 +691,6 @@ class BiblioCommonsCard extends HTMLElement {
         url: attrs.library_url || "",
         favicon: attrs.library_favicon || "",
         cardNumber: attrs.library_card_number || "",
-        appleWalletUrl: attrs.apple_wallet_url || attrs.apple_wallet_pass_url || "",
-        googleWalletUrl: attrs.google_wallet_url || attrs.google_wallet_pass_url || "",
         assignees: attrs.assignees || [],
         books,
         history,
@@ -659,49 +736,46 @@ class BiblioCommonsCard extends HTMLElement {
     `;
   }
 
-  walletButtonsTemplate(group) {
+  barcodeActionsTemplate(group) {
     const cardNumber = this.libraryCardNumber(group);
-    const appleUrl = group.appleWalletUrl || "";
-    const googleUrl = group.googleWalletUrl || "";
-    const platform = this.walletPlatform();
-    const buttons = [];
-    if (platform !== "google") {
-      buttons.push(this.walletButtonTemplate("Apple Wallet", "mdi:apple", appleUrl, cardNumber));
-    }
-    if (platform !== "apple") {
-      buttons.push(this.walletButtonTemplate("Google Wallet", "mdi:google", googleUrl, cardNumber));
-    }
+    const disabled = cardNumber ? "" : " disabled";
     return `
-      <div class="wallet-actions ${buttons.length === 1 ? "single" : ""}">${buttons.join("")}</div>
+      <div class="barcode-actions">
+        <button
+          class="fullscreen-barcode-button"
+          type="button"
+          data-card-number="${this.escapeAttr(cardNumber)}"
+          data-library-name="${this.escapeAttr(group.name || "Library card")}"
+          data-library-favicon="${this.escapeAttr(group.favicon || "")}"
+          ${disabled}
+        ><ha-icon icon="mdi:barcode-scan"></ha-icon><span>Fullscreen barcode</span></button>
+      </div>
     `;
   }
 
-  walletPlatform() {
-    const userAgent = navigator.userAgent || "";
-    const platform = navigator.platform || "";
-    if (/android/i.test(userAgent)) return "google";
-    if (/iphone|ipad|ipod/i.test(userAgent)) return "apple";
-    if (/mac/i.test(platform) || /mac os x/i.test(userAgent)) return "apple";
-    return "all";
+  fullscreenBarcodeTemplate() {
+    if (!this._barcodeContext?.number) return "";
+    const icon = this._barcodeContext.favicon
+      ? `<img class="barcode-fullscreen-icon" src="${this.escapeAttr(this._barcodeContext.favicon)}" alt="">`
+      : `<span></span>`;
+    return `
+      <div class="barcode-backdrop" role="dialog" aria-modal="true">
+        <div class="barcode-fullscreen">
+          <div class="barcode-fullscreen-header">
+            ${icon}
+            <div class="barcode-fullscreen-title">${this.escape(this._barcodeContext.name || "Library card")}</div>
+            <button class="barcode-close" type="button" title="Close"><ha-icon icon="mdi:close"></ha-icon></button>
+          </div>
+          ${this.code39Svg(this._barcodeContext.number)}
+          <div class="barcode-fullscreen-number">${this.escape(this._barcodeContext.number)}</div>
+        </div>
+      </div>
+    `;
   }
 
-  walletButtonTemplate(label, icon, url, cardNumber) {
-    const unavailable = !url || !cardNumber;
-    const unavailableTitle = cardNumber
-      ? `${label} setup is not available yet`
-      : "Library card number not available yet";
-    const attrs = unavailable
-      ? `href="#" class="wallet-button unavailable" data-wallet-unavailable="${this.escapeAttr(unavailableTitle)}" title="${this.escapeAttr(unavailableTitle)}"`
-      : `href="${this.escapeAttr(url)}" class="wallet-button" target="_blank" rel="noopener noreferrer" title="Add to ${this.escapeAttr(label)}"`;
-    return `<a ${attrs}><ha-icon icon="${this.escapeAttr(icon)}"></ha-icon><span>${this.escape(label)}</span></a>`;
-  }
-
-  showNotification(message) {
-    this.dispatchEvent(new CustomEvent("hass-notification", {
-      detail: { message },
-      bubbles: true,
-      composed: true,
-    }));
+  openFullscreenBarcode(context) {
+    this._barcodeContext = context;
+    this.render();
   }
 
   code39Svg(value) {
@@ -786,7 +860,7 @@ class BiblioCommonsCard extends HTMLElement {
       <section class="library">
         <div class="library-header">${icon}<span class="library-name">${name}</span>${dueBadge}${syncButton}</div>
         ${this.libraryBarcodeTemplate(this.libraryCardNumber(group))}
-        ${this.walletButtonsTemplate(group)}
+        ${this.barcodeActionsTemplate(group)}
         <div class="library-section-actions">
           <button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="books">
             ${showBooks ? "Hide checked out books" : "Show checked out books"} (${group.books.length})

@@ -93,6 +93,9 @@ class BiblioCommonsCard extends HTMLElement {
           margin-top: 2px;
           max-width: 460px;
         }
+        .wallet-actions.single {
+          grid-template-columns: minmax(0, 1fr);
+        }
         .wallet-button {
           display: inline-flex;
           align-items: center;
@@ -660,12 +663,26 @@ class BiblioCommonsCard extends HTMLElement {
     const cardNumber = this.libraryCardNumber(group);
     const appleUrl = group.appleWalletUrl || "";
     const googleUrl = group.googleWalletUrl || "";
+    const platform = this.walletPlatform();
+    const buttons = [];
+    if (platform !== "google") {
+      buttons.push(this.walletButtonTemplate("Apple Wallet", "mdi:apple", appleUrl, cardNumber));
+    }
+    if (platform !== "apple") {
+      buttons.push(this.walletButtonTemplate("Google Wallet", "mdi:google", googleUrl, cardNumber));
+    }
     return `
-      <div class="wallet-actions">
-        ${this.walletButtonTemplate("Apple Wallet", "mdi:apple", appleUrl, cardNumber)}
-        ${this.walletButtonTemplate("Google Wallet", "mdi:google", googleUrl, cardNumber)}
-      </div>
+      <div class="wallet-actions ${buttons.length === 1 ? "single" : ""}">${buttons.join("")}</div>
     `;
+  }
+
+  walletPlatform() {
+    const userAgent = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+    if (/android/i.test(userAgent)) return "google";
+    if (/iphone|ipad|ipod/i.test(userAgent)) return "apple";
+    if (/mac/i.test(platform) || /mac os x/i.test(userAgent)) return "apple";
+    return "all";
   }
 
   walletButtonTemplate(label, icon, url, cardNumber) {

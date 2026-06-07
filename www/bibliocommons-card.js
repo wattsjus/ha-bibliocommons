@@ -225,11 +225,20 @@ class BiblioCommonsCard extends HTMLElement {
           background: transparent;
           color: var(--primary-color);
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           font: inherit;
           font-size: 13px;
           font-weight: 650;
           padding: 2px 0;
           text-align: left;
+        }
+        .section-toggle .due-badge {
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          font-size: 11px;
         }
         .section-toggle:hover {
           text-decoration: underline;
@@ -835,6 +844,9 @@ class BiblioCommonsCard extends HTMLElement {
     const dueBadge = dueCount
       ? `<span class="due-badge" title="${dueCount} due soon or overdue">${this.escape(dueCount)}</span>`
       : "";
+    const activeDueBadge = dueCount
+      ? `<span class="due-badge" title="${dueCount} due soon or overdue">${this.escape(dueCount)}</span>`
+      : "";
     const syncButton = this.config.allow_assignment
       ? `<button class="sync-button" type="button" title="Sync ${this.escapeAttr(group.name)}" data-entry-id="${this.escapeAttr(group.entryId)}"${this._syncing === group.entryId || this._syncing === true ? " disabled" : ""}>
           ${this._syncing === group.entryId || this._syncing === true ? "Syncing..." : "Sync"}
@@ -863,7 +875,7 @@ class BiblioCommonsCard extends HTMLElement {
         ${this.barcodeActionsTemplate(group)}
         <div class="library-section-actions">
           <button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="books">
-            ${showBooks ? "Hide checked out books" : "Show checked out books"} (${group.books.length})
+            <span>${showBooks ? "Hide checked out books" : "Show checked out books"}</span>${activeDueBadge}
           </button>
           ${historyToggle}
         </div>

@@ -194,18 +194,32 @@ class BiblioCommonsCard extends HTMLElement {
           min-width: 0;
           flex: 1 1 auto;
         }
-        .due-badge {
+        .library-counts {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex: 0 0 auto;
+        }
+        .count-badge {
           display: inline-grid;
           place-items: center;
           min-width: 22px;
           height: 22px;
           padding: 0 6px;
           border-radius: 999px;
-          background: #d94141;
           color: #fff;
           font-size: 12px;
           font-weight: 750;
           line-height: 1;
+        }
+        .count-badge.overdue {
+          background: #d94141;
+        }
+        .count-badge.due-soon {
+          background: #d2a019;
+        }
+        .count-badge.checked-out {
+          background: #2b78d0;
         }
         .library-icon {
           width: 20px;
@@ -214,34 +228,53 @@ class BiblioCommonsCard extends HTMLElement {
           object-fit: contain;
         }
         .library-section-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
+          display: grid;
+          gap: 10px;
           margin: 0 0 12px;
+        }
+        .library-expander {
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          background: var(--card-background-color);
+          overflow: hidden;
         }
         .section-toggle {
           appearance: none;
           border: 0;
-          background: transparent;
-          color: var(--primary-color);
+          border-bottom: 1px solid transparent;
+          background: var(--secondary-background-color);
+          color: var(--primary-text-color);
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          width: 100%;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 700;
+          padding: 10px 12px;
+          text-align: left;
+        }
+        .library-expander.open .section-toggle {
+          border-bottom-color: var(--divider-color);
+        }
+        .section-toggle:hover {
+          color: var(--primary-color);
+        }
+        .section-toggle ha-icon {
+          width: 18px;
+          height: 18px;
+          flex: 0 0 auto;
+        }
+        .section-toggle span:last-child {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 650;
-          padding: 2px 0;
-          text-align: left;
+          color: var(--secondary-text-color);
         }
-        .section-toggle .due-badge {
-          min-width: 18px;
-          height: 18px;
-          padding: 0 5px;
-          font-size: 11px;
-        }
-        .section-toggle:hover {
-          text-decoration: underline;
+        .section-content {
+          padding: 10px;
         }
         .books {
           display: grid;
@@ -723,11 +756,35 @@ class BiblioCommonsCard extends HTMLElement {
     return group?.entryId || group?.entityId || group?.url || group?.name || "library";
   }
 
-  dueAttentionCount(group) {
-    return (group.books || []).filter((book) => {
-      const state = this.bookStateClass(book);
-      return state === "due-soon" || state === "overdue";
-    }).length;
+  checkoutCounts(group) {
+    return (group.books || []).reduce(
+      (counts, book) => {
+        const state = this.bookStateClass(book);
+        if (state === "overdue") {
+          counts.overdue += 1;
+        } else if (state === "due-soon") {
+          counts.dueSoon += 1;
+        } else {
+          counts.other += 1;
+        }
+        return counts;
+      },
+      { overdue: 0, dueSoon: 0, other: 0 },
+    );
+  }
+
+  libraryCountBadges(counts) {
+    const badges = [];
+    if (counts.overdue) {
+      badges.push(`<span class="count-badge overdue" title="${counts.overdue} overdue">${this.escape(counts.overdue)}</span>`);
+    }
+    if (counts.dueSoon) {
+      badges.push(`<span class="count-badge due-soon" title="${counts.dueSoon} due soon">${this.escape(counts.dueSoon)}</span>`);
+    }
+    if (counts.other) {
+      badges.push(`<span class="count-badge checked-out" title="${counts.other} other checked out">${this.escape(counts.other)}</span>`);
+    }
+    return badges.length ? `<span class="library-counts">${badges.join("")}</span>` : "";
   }
 
   libraryBarcodeTemplate(cardNumber) {
@@ -834,53 +891,66 @@ class BiblioCommonsCard extends HTMLElement {
     const libraryKey = this.libraryKey(group);
     const showBooks = this._expandedLibraryBooks.has(libraryKey);
     const showHistory = this._expandedLibraryHistory.has(libraryKey);
-    const dueCount = this.dueAttentionCount(group);
+    const counts = this.checkoutCounts(group);
     const icon = group.favicon
       ? `<img class="library-icon" src="${this.escapeAttr(group.favicon)}" alt="">`
       : "";
     const name = group.url
       ? `<a class="title-link" href="${this.escapeAttr(group.url)}" target="_blank" rel="noopener noreferrer">${this.escape(group.name)}</a>`
       : this.escape(group.name);
-    const dueBadge = dueCount
-      ? `<span class="due-badge" title="${dueCount} due soon or overdue">${this.escape(dueCount)}</span>`
-      : "";
-    const activeDueBadge = dueCount
-      ? `<span class="due-badge" title="${dueCount} due soon or overdue">${this.escape(dueCount)}</span>`
-      : "";
+    const countBadges = this.libraryCountBadges(counts);
     const syncButton = this.config.allow_assignment
       ? `<button class="sync-button" type="button" title="Sync ${this.escapeAttr(group.name)}" data-entry-id="${this.escapeAttr(group.entryId)}"${this._syncing === group.entryId || this._syncing === true ? " disabled" : ""}>
           ${this._syncing === group.entryId || this._syncing === true ? "Syncing..." : "Sync"}
         </button>`
       : "";
     const historyToggle = this.config.show_history
-      ? `<button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="history">
-          ${showHistory ? "Hide previously checked out books" : "Show previously checked out books"} (${group.history.length})
-        </button>`
+      ? this.libraryExpanderTemplate(
+          libraryKey,
+          "history",
+          showHistory,
+          `${showHistory ? "Hide" : "Show"} previously checked out books`,
+          group.history.length ? `${group.history.length}` : "",
+          showHistory ? this.historyListTemplate(group) : "",
+        )
       : "";
-    const activeBooks = showBooks
-      ? `<div class="books" style="${this.gridStyle()}">
+    const activeBooks = `<div class="books" style="${this.gridStyle()}">
           ${
             group.books.length
               ? group.books.map((book) => this.bookTemplate(book, group.assignees, group.entryId)).join("")
               : `<div class="empty">No checked-out books for this library.</div>`
           }
-        </div>`
-      : "";
-    const history = showHistory ? this.historyListTemplate(group) : "";
+        </div>`;
+    const activeSection = this.libraryExpanderTemplate(
+      libraryKey,
+      "books",
+      showBooks,
+      `${showBooks ? "Hide" : "Show"} checked out books`,
+      "",
+      showBooks ? activeBooks : "",
+    );
 
     return `
       <section class="library">
-        <div class="library-header">${icon}<span class="library-name">${name}</span>${dueBadge}${syncButton}</div>
+        <div class="library-header">${icon}<span class="library-name">${name}</span>${countBadges}${syncButton}</div>
         ${this.libraryBarcodeTemplate(this.libraryCardNumber(group))}
         ${this.barcodeActionsTemplate(group)}
         <div class="library-section-actions">
-          <button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="books">
-            <span>${showBooks ? "Hide checked out books" : "Show checked out books"}</span>${activeDueBadge}
-          </button>
+          ${activeSection}
           ${historyToggle}
         </div>
-        ${activeBooks}
-        ${history}
+      </section>
+    `;
+  }
+
+  libraryExpanderTemplate(libraryKey, section, open, title, trailing, content) {
+    return `
+      <section class="library-expander ${open ? "open" : ""}">
+        <button class="section-toggle" type="button" data-library-key="${this.escapeAttr(libraryKey)}" data-section="${this.escapeAttr(section)}">
+          <span>${this.escape(title)}</span>
+          <span>${trailing ? this.escape(trailing) : ""}<ha-icon icon="${open ? "mdi:chevron-up" : "mdi:chevron-down"}"></ha-icon></span>
+        </button>
+        ${open ? `<div class="section-content">${content}</div>` : ""}
       </section>
     `;
   }

@@ -1686,6 +1686,12 @@ class BiblioCommonsCoordinator(DataUpdateCoordinator):
 
         resp.raise_for_status()
         books = _parse_checkouts(resp.text, library_url)
+        cached_books = _clean_cached_books(self.entry.options.get(CONF_LAST_BOOKS, []))
+        if not books and cached_books and not _checkout_page_confirms_no_physical_books(resp.text):
+            raise ValueError(
+                "Checkout page did not include checkout items or a no-checkouts message; "
+                "keeping the previous book list until the next successful sync"
+            )
         if not self.library_card_number:
             try:
                 self.library_card_number = bibliocommons_library_card_number(
@@ -1708,7 +1714,22 @@ def _parse_checkouts(html: str, library_url: str = "") -> list[dict]:
     books = []
     cover_map = _cover_map_from_html(html)
 
-    items = (
+    items = _checkout_item_candidates(soup)
+
+    for item in items:
+        try:
+            book = _extract_book_data(item, library_url, cover_map)
+            if book and not _is_digital_checkout(book):
+                books.append(book)
+        except Exception:  # noqa: BLE001
+            continue
+
+    return books
+
+
+def _checkout_item_candidates(soup: BeautifulSoup) -> list:
+    """Return possible checkout item containers from a BiblioCommons account page."""
+    return (
         soup.select(".cp-bib-list-item.cp-checked-out-item")
         or soup.select(".cp-checked-out-item")
         or soup.select(".cp-bib-list-item")
@@ -1721,15 +1742,24 @@ def _parse_checkouts(html: str, library_url: str = "") -> list[dict]:
         ]
     )
 
-    for item in items:
-        try:
-            book = _extract_book_data(item, library_url, cover_map)
-            if book and not _is_digital_checkout(book):
-                books.append(book)
-        except Exception:  # noqa: BLE001
-            continue
 
-    return books
+def _checkout_page_confirms_no_physical_books(html: str) -> bool:
+    """Return true when an empty parsed result looks authoritative."""
+    soup = BeautifulSoup(html, "html.parser")
+    if _checkout_item_candidates(soup):
+        return True
+
+    text = " ".join(soup.get_text(" ", strip=True).lower().split())
+    empty_markers = (
+        "no checked out",
+        "no items checked out",
+        "no titles checked out",
+        "nothing checked out",
+        "you do not have any checked out",
+        "you have no checked out",
+        "you have no titles checked out",
+    )
+    return any(marker in text for marker in empty_markers)
 
 
 def _is_digital_checkout(book: dict) -> bool:

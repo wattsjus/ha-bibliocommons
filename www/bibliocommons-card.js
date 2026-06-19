@@ -1257,7 +1257,7 @@ class BiblioCommonsCard extends HTMLElement {
             )}
             <label class="report-field">
               <span class="report-label">How many hours did this take to read?</span>
-              <input name="reading_hours" type="number" min="0" step="0.25" required value="${this.escapeAttr(report.minutes_reading || "")}">
+              <input name="hours_reading" type="number" min="0" step="0.25" required value="${this.escapeAttr(report.hours_reading || "")}">
             </label>
             <div class="report-actions">
               <button class="report-cancel" type="button">Cancel</button>
@@ -1299,7 +1299,7 @@ class BiblioCommonsCard extends HTMLElement {
             ${this.reportReadOnlyAnswer("Would you recommend this book to a friend?", report.recommendation || "")}
             <div class="report-field">
               <span class="report-label">How many hours did this take to read?</span>
-              <div class="report-answer">${this.escape(this.formatReadingHours(report.minutes_reading))}</div>
+              <div class="report-answer">${this.escape(this.formatReadingHours(report.hours_reading))}</div>
             </div>
             <label class="report-field">
               <span class="report-label">Screen time minutes</span>
@@ -1437,7 +1437,7 @@ class BiblioCommonsCard extends HTMLElement {
       character_change: data.character_change || "",
       theme: data.theme || "",
       recommendation: data.recommendation || "",
-      minutes_reading: Number(data.reading_hours || 0),
+      hours_reading: Number(data.hours_reading || 0),
     });
     this.clearReportDraft();
     this._reportContext = null;

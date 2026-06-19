@@ -46,7 +46,7 @@ from .const import (
     CONF_REPORT_CHARACTER_CHANGE,
     CONF_REPORT_THEME,
     CONF_REPORT_RECOMMENDATION,
-    CONF_REPORT_MINUTES,
+    CONF_REPORT_HOURS,
     CONF_REPORT_STATUS,
     CONF_REPORT_SCREEN_MINUTES,
     CONF_REPORT_REVIEW_NOTE,
@@ -85,7 +85,7 @@ SUBMIT_BOOK_REPORT_SCHEMA = vol.Schema(
         vol.Required(CONF_REPORT_CHARACTER_CHANGE): str,
         vol.Required(CONF_REPORT_THEME): str,
         vol.Required(CONF_REPORT_RECOMMENDATION): str,
-        vol.Required(CONF_REPORT_MINUTES): vol.Coerce(int),
+        vol.Required(CONF_REPORT_HOURS): vol.Coerce(float),
         vol.Optional(CONF_ENTRY_ID): str,
     }
 )
@@ -355,7 +355,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
                     "character_change": call.data[CONF_REPORT_CHARACTER_CHANGE].strip(),
                     "theme": call.data[CONF_REPORT_THEME].strip(),
                     "recommendation": call.data[CONF_REPORT_RECOMMENDATION].strip(),
-                    "minutes_reading": max(0, float(call.data[CONF_REPORT_MINUTES])),
+                    "hours_reading": max(0, float(call.data.get(CONF_REPORT_HOURS, 0))),
                     "report_status": "submitted",
                     "screen_time_minutes": 0,
                     "review_note": "",
@@ -566,7 +566,7 @@ def _clean_book_history(hass: HomeAssistant, history: list) -> list[dict[str, st
     return cleaned[:MAX_BOOK_HISTORY]
 
 
-def _clean_book_reports(hass: HomeAssistant, reports: list) -> list[dict[str, str | int]]:
+def _clean_book_reports(hass: HomeAssistant, reports: list) -> list[dict[str, str | int | float]]:
     """Normalize stored book report entries."""
     if not isinstance(reports, list):
         return []
@@ -594,7 +594,7 @@ def _clean_book_reports(hass: HomeAssistant, reports: list) -> list[dict[str, st
                 "character_change": str(item.get("character_change", "")),
                 "theme": str(item.get("theme", "")),
                 "recommendation": str(item.get("recommendation", "")),
-                "minutes_reading": float(item.get("minutes_reading", 0) or 0),
+                "hours_reading": float(item.get("hours_reading", 0) or 0),
                 "report_status": str(item.get("report_status", "submitted") or "submitted"),
                 "screen_time_minutes": int(item.get("screen_time_minutes", 0) or 0),
                 "review_note": str(item.get("review_note", "")),

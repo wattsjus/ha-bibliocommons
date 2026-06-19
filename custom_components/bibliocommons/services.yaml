@@ -83,7 +83,7 @@ submit_book_report:
       selector:
         text:
           multiline: true
-    minutes_reading:
+    hours_reading:
       required: true
       name: Hours reading
       selector:

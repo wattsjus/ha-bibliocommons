@@ -31,6 +31,7 @@ from .const import (
     CONF_BOOK_ASSIGNMENTS,
     CONF_BOOK_HISTORY,
     CONF_BOOK_REPORTS,
+    CONF_BOOK_REPORT_MINUTES_MIGRATED,
     CONF_LAST_BOOKS,
     CONF_READING_LEVEL_CACHE,
     CONF_PENDING_MISSING_BOOKS,
@@ -816,6 +817,14 @@ def _async_clean_entry_options(
     assignments = _clean_book_assignments(options)
     history = _clean_book_history(hass, options.get(CONF_BOOK_HISTORY, []))
     reports = _clean_book_reports(hass, options.get(CONF_BOOK_REPORTS, []))
+    if not options.get(CONF_BOOK_REPORT_MINUTES_MIGRATED):
+        reports = [
+            {
+                **report,
+                "minutes_reading": int(report.get("minutes_reading", 0) or 0) * 60,
+            }
+            for report in reports
+        ]
     last_books = _clean_cached_books(options.get(CONF_LAST_BOOKS, []))
     pending_missing = [
         key
@@ -831,6 +840,7 @@ def _async_clean_entry_options(
     cleaned[CONF_BOOK_ASSIGNMENTS] = assignments
     cleaned[CONF_BOOK_HISTORY] = history
     cleaned[CONF_BOOK_REPORTS] = reports
+    cleaned[CONF_BOOK_REPORT_MINUTES_MIGRATED] = True
     if last_books:
         cleaned[CONF_LAST_BOOKS] = last_books
     if pending_missing:

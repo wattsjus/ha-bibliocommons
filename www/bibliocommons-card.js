@@ -1246,8 +1246,8 @@ class BiblioCommonsCard extends HTMLElement {
               report.recommendation || "",
             )}
             <label class="report-field">
-              <span class="report-label">How long did this take to read?</span>
-              <input name="minutes_reading" type="number" min="0" step="1" required value="${this.escapeAttr(report.minutes_reading || "")}">
+              <span class="report-label">How many hours did this take to read?</span>
+              <input name="reading_hours" type="number" min="0" step="0.25" required value="${this.escapeAttr(this.readingHoursInputValue(report.minutes_reading))}">
             </label>
             <div class="report-actions">
               <button class="report-cancel" type="button">Cancel</button>
@@ -1288,8 +1288,8 @@ class BiblioCommonsCard extends HTMLElement {
             ${this.reportReadOnlyAnswer("What is the author's main message (theme)?", report.theme || "")}
             ${this.reportReadOnlyAnswer("Would you recommend this book to a friend?", report.recommendation || "")}
             <div class="report-field">
-              <span class="report-label">How long did this take to read?</span>
-              <div class="report-answer">${this.escape(report.minutes_reading || 0)} minutes</div>
+              <span class="report-label">How many hours did this take to read?</span>
+              <div class="report-answer">${this.escape(this.formatReadingHours(report.minutes_reading))}</div>
             </div>
             <label class="report-field">
               <span class="report-label">Screen time minutes</span>
@@ -1427,7 +1427,7 @@ class BiblioCommonsCard extends HTMLElement {
       character_change: data.character_change || "",
       theme: data.theme || "",
       recommendation: data.recommendation || "",
-      minutes_reading: Number(data.minutes_reading || 0),
+      minutes_reading: Math.round(Number(data.reading_hours || 0) * 60),
     });
     this.clearReportDraft();
     this._reportContext = null;
@@ -1506,6 +1506,21 @@ class BiblioCommonsCard extends HTMLElement {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleDateString();
+  }
+
+  readingHoursInputValue(minutes) {
+    const value = Number(minutes || 0);
+    if (!value) return "";
+    const hours = value / 60;
+    return Number.isInteger(hours) ? `${hours}` : `${Math.round(hours * 100) / 100}`;
+  }
+
+  formatReadingHours(minutes) {
+    const value = Number(minutes || 0);
+    if (!value) return "0 hours";
+    const hours = value / 60;
+    const rounded = Number.isInteger(hours) ? hours : Math.round(hours * 100) / 100;
+    return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
   }
 
   escape(value) {

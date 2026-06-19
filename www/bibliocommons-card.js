@@ -996,7 +996,6 @@ class BiblioCommonsCard extends HTMLElement {
             group.entryId || "",
             report.book_key || book.book_key || "",
             report.person_entity_id || "",
-            report.updated_at || "",
           ].join("|");
           if (seen.has(key)) return [];
           seen.add(key);

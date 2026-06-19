@@ -124,16 +124,24 @@ def _book_is_active_history_item(
     )
 
 
-def _reports_for_book(book_key: str, reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return reports for the given book key."""
+def _reports_for_book(
+    book_key: str,
+    reports: list[dict[str, Any]],
+    person_entity_id: str = "",
+) -> list[dict[str, Any]]:
+    """Return reports for the given book key, optionally limited to a person."""
+    person = person_entity_id if person_entity_id.startswith("person.") else ""
     return [
         report
         for report in reports
-        if report.get("book_key") == book_key
-        or _normalize_match_text(report.get("book_key", ""))
-        == _normalize_match_text(book_key)
-        or _normalize_match_text(_title_from_book_key(report.get("book_key", "")))
-        == _normalize_match_text(_title_from_book_key(book_key))
+        if (not person or report.get("person_entity_id") == person)
+        and (
+            report.get("book_key") == book_key
+            or _normalize_match_text(report.get("book_key", ""))
+            == _normalize_match_text(book_key)
+            or _normalize_match_text(_title_from_book_key(report.get("book_key", "")))
+            == _normalize_match_text(_title_from_book_key(book_key))
+        )
     ]
 
 
@@ -236,6 +244,7 @@ class BiblioCommonsCheckedOutSensor(CoordinatorEntity, SensorEntity):
             if _book_is_active_history_item(item, active_full_tokens, active_title_tokens):
                 continue
             assignee = item.get("assignee_entity_id", item.get("assignee", ""))
+            item_reports = _reports_for_book(item.get("book_key", ""), reports, str(assignee))
             history.append({
                 "book_key": item.get("book_key", ""),
                 "title": item.get("title", "Unknown Title"),
@@ -249,8 +258,8 @@ class BiblioCommonsCheckedOutSensor(CoordinatorEntity, SensorEntity):
                 "reading_level_source": item.get("reading_level_source", ""),
                 "library_name": item.get("library_name", self._entry.title),
                 "library_url": item.get("library_url", self._entry.data.get(CONF_LIBRARY_URL, "")),
-                "book_reports": _reports_for_book(item.get("book_key", ""), reports),
-                "book_report_count": len(_reports_for_book(item.get("book_key", ""), reports)),
+                "book_reports": item_reports,
+                "book_report_count": len(item_reports),
             })
 
         for book in books:
@@ -268,6 +277,7 @@ class BiblioCommonsCheckedOutSensor(CoordinatorEntity, SensorEntity):
             )
             assignee_names = _assignee_names(self.hass, assignees_for_book)
 
+            book_reports = _reports_for_book(book_key, reports)
             book_list.append({
                 "book_key": book_key,
                 "title": book.get("title", "Unknown Title"),
@@ -290,8 +300,8 @@ class BiblioCommonsCheckedOutSensor(CoordinatorEntity, SensorEntity):
                 "assignees": assignees_for_book,
                 "assignee_names": assignee_names,
                 "assignee_entity_ids": assignees_for_book,
-                "book_reports": _reports_for_book(book_key, reports),
-                "book_report_count": len(_reports_for_book(book_key, reports)),
+                "book_reports": book_reports,
+                "book_report_count": len(book_reports),
             })
 
         # Sort unassigned first, then keep the existing due-date priority.

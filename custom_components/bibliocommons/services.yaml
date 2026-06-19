@@ -85,10 +85,11 @@ submit_book_report:
           multiline: true
     minutes_reading:
       required: true
-      name: Minutes reading
+      name: Hours reading
       selector:
         number:
           min: 0
+          step: 0.25
           mode: box
     entry_id:
       required: false

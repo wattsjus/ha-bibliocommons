@@ -987,15 +987,26 @@ class BiblioCommonsCard extends HTMLElement {
   }
 
   groupBookReports(groups) {
+    const seen = new Set();
     return groups.flatMap((group) => {
       const books = [...group.books, ...group.history];
       return books.flatMap((book) =>
-        (book.book_reports || []).map((report) => ({
-          book,
-          report,
-          entryId: group.entryId,
-          libraryName: group.name,
-        })),
+        (book.book_reports || []).flatMap((report) => {
+          const key = [
+            group.entryId || "",
+            report.book_key || book.book_key || "",
+            report.person_entity_id || "",
+            report.updated_at || "",
+          ].join("|");
+          if (seen.has(key)) return [];
+          seen.add(key);
+          return [{
+            book,
+            report,
+            entryId: group.entryId,
+            libraryName: group.name,
+          }];
+        }),
       );
     });
   }
@@ -1247,7 +1258,7 @@ class BiblioCommonsCard extends HTMLElement {
             )}
             <label class="report-field">
               <span class="report-label">How many hours did this take to read?</span>
-              <input name="reading_hours" type="number" min="0" step="0.25" required value="${this.escapeAttr(this.readingHoursInputValue(report.minutes_reading))}">
+              <input name="reading_hours" type="number" min="0" step="0.25" required value="${this.escapeAttr(report.minutes_reading || "")}">
             </label>
             <div class="report-actions">
               <button class="report-cancel" type="button">Cancel</button>
@@ -1427,7 +1438,7 @@ class BiblioCommonsCard extends HTMLElement {
       character_change: data.character_change || "",
       theme: data.theme || "",
       recommendation: data.recommendation || "",
-      minutes_reading: Math.round(Number(data.reading_hours || 0) * 60),
+      minutes_reading: Number(data.reading_hours || 0),
     });
     this.clearReportDraft();
     this._reportContext = null;
@@ -1508,18 +1519,9 @@ class BiblioCommonsCard extends HTMLElement {
     return parsed.toLocaleDateString();
   }
 
-  readingHoursInputValue(minutes) {
-    const value = Number(minutes || 0);
-    if (!value) return "";
-    const hours = value / 60;
-    return Number.isInteger(hours) ? `${hours}` : `${Math.round(hours * 100) / 100}`;
-  }
-
-  formatReadingHours(minutes) {
-    const value = Number(minutes || 0);
-    if (!value) return "0 hours";
-    const hours = value / 60;
-    const rounded = Number.isInteger(hours) ? hours : Math.round(hours * 100) / 100;
+  formatReadingHours(hours) {
+    const value = Number(hours || 0);
+    const rounded = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
     return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
   }
 

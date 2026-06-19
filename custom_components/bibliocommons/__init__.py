@@ -1662,6 +1662,14 @@ class BiblioCommonsCoordinator(DataUpdateCoordinator):
             self._return_notifications_ready = True
             return books
         except Exception as err:
+            cached_books = _clean_cached_books(self.entry.options.get(CONF_LAST_BOOKS, []))
+            if cached_books:
+                _LOGGER.warning(
+                    "Error fetching library data; keeping %s cached books: %s",
+                    len(cached_books),
+                    err,
+                )
+                return cached_books
             raise UpdateFailed(f"Error fetching library data: {err}") from err
 
     def _fetch_checkouts(self) -> list[dict]:

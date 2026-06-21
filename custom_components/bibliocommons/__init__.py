@@ -68,6 +68,7 @@ EVENT_BOOK_REPORT_APPROVED = "bibliocommons_book_report_approved"
 READING_LEVEL_LOOKUP_LIMIT = 3
 READING_LEVEL_RETRY_DAYS = 7
 READING_LEVEL_TIMEOUT = 8
+MISSING_BOOK_CONFIRMATION_MINUTES = 30
 
 ASSIGN_BOOK_SCHEMA = vol.Schema(
     {
@@ -676,6 +677,19 @@ def _reading_level_cache_is_stale(item: dict[str, str]) -> bool:
     return dt_util.utcnow() - checked >= timedelta(days=READING_LEVEL_RETRY_DAYS)
 
 
+def _missing_book_confirmation_is_old_enough(value: str) -> bool:
+    """Return true when a missing-book marker is old enough to trust."""
+    if not value:
+        return False
+    try:
+        marked_at = datetime.fromisoformat(value)
+    except ValueError:
+        return False
+    return dt_util.utcnow() - marked_at >= timedelta(
+        minutes=MISSING_BOOK_CONFIRMATION_MINUTES
+    )
+
+
 def _apply_reading_level(book: dict[str, str], data: dict[str, str]) -> None:
     """Copy cached reading-level metadata onto a book."""
     for field in ("lexile_level", "reading_level", "reading_level_source"):
@@ -931,7 +945,10 @@ async def _async_update_cached_books_after_sync(
             for key in options.get(CONF_PENDING_MISSING_BOOKS, [])
             if isinstance(key, str)
         }
-        if pending_keys != missing_keys:
+        pending_at = str(options.get(CONF_PENDING_MISSING_AT, ""))
+        if pending_keys != missing_keys or not _missing_book_confirmation_is_old_enough(
+            pending_at
+        ):
             merged_books = _book_merge_with_cached(
                 current_books,
                 cached_books,
@@ -940,8 +957,9 @@ async def _async_update_cached_books_after_sync(
             updated = dict(options)
             updated[CONF_LAST_BOOKS] = _clean_cached_books(merged_books)
             updated[CONF_PENDING_MISSING_BOOKS] = sorted(missing_keys)
-            updated[CONF_PENDING_MISSING_AT] = (
-                dt_util.utcnow().replace(microsecond=0).isoformat()
+            updated.setdefault(
+                CONF_PENDING_MISSING_AT,
+                dt_util.utcnow().replace(microsecond=0).isoformat(),
             )
             if updated != options:
                 hass.config_entries.async_update_entry(entry, options=updated)

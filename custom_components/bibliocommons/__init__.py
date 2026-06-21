@@ -920,9 +920,39 @@ async def _async_update_cached_books_after_sync(
     """Treat the latest successful checkout sync as authoritative."""
     options = dict(entry.options)
     cached_books = _clean_cached_books(options.get(CONF_LAST_BOOKS, []))
+    current_books = _clean_cached_books(current_books)
+    cached_keys = _book_key_set(cached_books)
+    current_keys = _book_key_set(current_books)
+    missing_keys = cached_keys - current_keys
+
+    if cached_books and missing_keys:
+        pending_keys = {
+            key
+            for key in options.get(CONF_PENDING_MISSING_BOOKS, [])
+            if isinstance(key, str)
+        }
+        if pending_keys != missing_keys:
+            merged_books = _book_merge_with_cached(
+                current_books,
+                cached_books,
+                missing_keys,
+            )
+            updated = dict(options)
+            updated[CONF_LAST_BOOKS] = _clean_cached_books(merged_books)
+            updated[CONF_PENDING_MISSING_BOOKS] = sorted(missing_keys)
+            updated[CONF_PENDING_MISSING_AT] = (
+                dt_util.utcnow().replace(microsecond=0).isoformat()
+            )
+            if updated != options:
+                hass.config_entries.async_update_entry(entry, options=updated)
+            _LOGGER.warning(
+                "Keeping %s cached books until the next sync confirms they are returned",
+                len(missing_keys),
+            )
+            return merged_books
 
     updated = dict(options)
-    updated[CONF_LAST_BOOKS] = _clean_cached_books(current_books)
+    updated[CONF_LAST_BOOKS] = current_books
     updated.pop(CONF_PENDING_MISSING_BOOKS, None)
     updated.pop(CONF_PENDING_MISSING_AT, None)
     if updated != options:
